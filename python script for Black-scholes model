@@ -1,0 +1,52 @@
+import numpy as np
+import pandas as pd
+from scipy.stats import norm
+
+def black_scholes(S, K, T, r, sigma, option_type='call'):
+    d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+
+    if option_type == 'call':
+        price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+    elif option_type == 'put':
+        price = K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
+    else:
+        raise ValueError("Invalid option type. Use 'call' or 'put'.")
+
+    return price
+
+def get_user_input():
+    n = int(input("Enter the number of options: "))
+    data = {'S': [], 'K': [], 'T': [], 'r': [], 'sigma': [], 'real_price': [], 'option_type': []}
+    for _ in range(n):
+        S = float(input("Enter the spot price (S): "))
+        K = float(input("Enter the strike price (K): "))
+        T = float(input("Enter the time to expiration in days: ")) / 365
+        r = float(input("Enter the risk-free rate (r): "))
+        sigma = float(input("Enter the volatility (sigma): "))
+        real_price = float(input("Enter the real option price: "))
+        option_type = input("Enter the option type ('call' or 'put'): ")
+
+        data['S'].append(S)
+        data['K'].append(K)
+        data['T'].append(T)
+        data['r'].append(r)
+        data['sigma'].append(sigma)
+        data['real_price'].append(real_price)
+        data['option_type'].append(option_type)
+
+    return pd.DataFrame(data)
+
+df = get_user_input()
+
+df['bs_price'] = df.apply(lambda row: black_scholes(row['S'], row['K'], row['T'], row['r'], row['sigma'], row['option_type']), axis=1)
+df['error'] = df['bs_price'] - df['real_price']
+df['squared_error'] = df['error']**2
+
+print(df[['S', 'K', 'T', 'r', 'sigma', 'real_price', 'bs_price', 'error', 'squared_error']])
+
+mse = df['squared_error'].mean()
+print(f"Mean Squared Error (MSE): {mse}")
+
+mae = df['error'].abs().mean()
+print(f"Mean Absolute Error (MAE): {mae}")
